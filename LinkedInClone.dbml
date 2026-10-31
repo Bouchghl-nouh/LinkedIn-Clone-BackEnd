@@ -1,0 +1,14 @@
+
+Table User {
+  id integer [primary key]
+  first_name varchar [not null]
+  last_name varchar [not null]
+  email varchar [not null,unique]
+  is_verified boolean [not null,default:false]
+  password varchar [not null]
+  avatar_url varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+
