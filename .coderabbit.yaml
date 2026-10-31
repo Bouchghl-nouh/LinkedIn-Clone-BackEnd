@@ -1,0 +1,58 @@
+language: en-US
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  review_status: true
+
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+
+  instructions: |
+    This is a LinkedIn-inspired social networking backend.
+
+    Technology:
+    - NestJS 12
+    - TypeScript with strict mode
+    - ESM
+    - PostgreSQL 18
+    - Vitest
+    - Oxlint
+    - Prettier
+
+    Focus on:
+    1. Bugs and incorrect business logic.
+    2. Security vulnerabilities.
+    3. NestJS architecture and dependency injection.
+    4. Database integrity, transactions and query safety.
+    5. Maintainability and separation of responsibilities.
+    6. Meaningful test coverage and edge cases.
+
+    NestJS guidelines:
+    - Respect module boundaries and provider visibility.
+    - Evaluate whether responsibilities belong in controllers,
+      providers, guards, pipes, interceptors or filters.
+    - Identify unnecessary abstractions and dependencies.
+    - Prefer established NestJS conventions when appropriate.
+
+    TypeScript guidelines:
+    - Respect strict typing.
+    - Avoid unnecessary any types and unsafe assertions.
+
+    Review guidelines:
+    - Explain why each important issue matters.
+    - Provide actionable recommendations.
+    - Distinguish bugs from optional improvements.
+    - Avoid nitpicking formatting handled by Prettier.
+    - Do not recommend abstractions without clear benefits.
+    - Consider architectural trade-offs before criticizing a design.
+    - Prioritize correctness and security over stylistic preferences.
+
+tone_instructions: |
+  Act as a constructive senior backend engineer and mentor.
+  Explain technical reasoning clearly.
+  Help developers understand problems rather than blindly
+  applying suggested changes.
