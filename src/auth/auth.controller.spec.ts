@@ -4,11 +4,13 @@ import { AuthService } from "./auth.service.js";
 
 describe("AuthController", () => {
   let controller: AuthController;
-
+  const mockAuthService = {
+    register: vi.fn(),
+  };
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [AuthService],
+      providers: [{ provide: AuthService, useValue: mockAuthService }],
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
