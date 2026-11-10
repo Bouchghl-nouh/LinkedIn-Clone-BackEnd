@@ -1,4 +1,4 @@
-import { Controller, Body, Post, Query } from "@nestjs/common";
+import { Controller, Body, Post, Query, Get } from "@nestjs/common";
 import { AuthService } from "./auth.service.js";
 import { CreateUserDto } from "../users/dto/create-user.dto.js";
 import { Throttle } from "@nestjs/throttler";
@@ -12,7 +12,7 @@ export class AuthController {
     const verificationMessage = await this.authService.register(createUserDto);
     return { message: verificationMessage };
   }
-  @Post("verify-email")
+  @Get("verify-email")
   async verifyEmail(@Query("token") token: string) {
     const verificationMessage = await this.authService.verifyEmail(token);
     return { message: verificationMessage };
