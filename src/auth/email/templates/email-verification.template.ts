@@ -1,6 +1,6 @@
 import { emailLayout } from "./email-layout.template.js";
 export function emailVerification(verificationUrl: string): string {
-    const content = `  <td style="padding: 16px 32px 32px 32px; font-size: 16px; line-height: 1.5;">
+  const content = `  <td style="padding: 16px 32px 32px 32px; font-size: 16px; line-height: 1.5;">
               <h2 style="margin-top: 0; margin-bottom: 16px; font-size: 20px; font-weight: 600; color: #000000;">Confirm your email address</h2>
               <p style="margin-top: 0; margin-bottom: 24px; color: #5e5e5e;">
                 Thanks for joining! Please tap the button below to verify your email address and finish setting up your account.

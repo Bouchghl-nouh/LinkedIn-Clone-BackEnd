@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { MailtrapClient } from "mailtrap";
 import { ConfigService } from "@nestjs/config";
-import {emailVerification} from "./templates/email-verification.template.js";
+import { emailVerification } from "./templates/email-verification.template.js";
 @Injectable()
 export class EmailService {
   private readonly mailerService: MailtrapClient;
