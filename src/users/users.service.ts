@@ -1,21 +1,20 @@
 import { ConflictException, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { CreateUserDto } from "./dto/create-user.dto.js";
+import { RegisterUserDto, UpdateUserDto } from "./dto/user.dto.js";
 import { User } from "./entities/user.entity.js";
-import { UpdateUserDto } from "./dto/update-user.dto.js";
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
   constructor(@InjectRepository(User) private readonly userRepository: Repository<User>) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
-    const { email } = createUserDto;
+  async create(registerUserDto: RegisterUserDto): Promise<User> {
+    const { email } = registerUserDto;
     const existingUser = await this.userRepository.findOneBy({ email });
     if (existingUser) {
       throw new ConflictException("Email already exists");
     }
-    const user = this.userRepository.create(createUserDto);
+    const user = this.userRepository.create(registerUserDto);
     return await this.userRepository.save(user);
   }
   async update(id: number, updateUserDto: UpdateUserDto): Promise<User> {

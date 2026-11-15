@@ -1,15 +1,15 @@
-import { Controller, Body, Post, Query, Get } from "@nestjs/common";
-import { AuthService } from "./auth.service.js";
-import { CreateUserDto } from "../users/dto/create-user.dto.js";
+import { Body, Controller, Get, Post, Query } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
+import { RegisterUserDto } from "../users/dto/user.dto.js";
+import { AuthService } from "./auth.service.js";
 import { EmailDto } from "./dto/email.dto.js";
 @Throttle({ default: { limit: 5, ttl: 60000 } })
 @Controller("auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
   @Post("register")
-  async register(@Body() createUserDto: CreateUserDto): Promise<{ message: string }> {
-    const verificationMessage = await this.authService.register(createUserDto);
+  async register(@Body() registerUser: RegisterUserDto): Promise<{ message: string }> {
+    const verificationMessage = await this.authService.register(registerUser);
     return { message: verificationMessage };
   }
   @Get("verify-email")

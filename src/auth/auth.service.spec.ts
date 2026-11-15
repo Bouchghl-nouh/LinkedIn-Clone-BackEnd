@@ -2,15 +2,13 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { AuthService } from "./auth.service.js";
 import { UsersService } from "../users/users.service.js";
 import { EmailService } from "./email/email.service.js";
+import { BadRequestException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import {ConfigService} from "@nestjs/config";
 describe("AuthService", () => {
   let service: AuthService;
   const mockUsersService = {
     create: vi.fn(),
-  };
-  const mockAuthService = {
-    register: vi.fn(),
-    generateEmailVerificationToken: vi.fn(),
   };
   const mockEmailService = {
     sendVerificationEmail: vi.fn(),
@@ -18,9 +16,10 @@ describe("AuthService", () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        { provide: AuthService, useValue: mockAuthService },
+        AuthService,
         { provide: UsersService, useValue: mockUsersService },
         { provide: EmailService, useValue: mockEmailService },
+        {provide:ConfigService, useValue: {get: vi.fn()}},
         JwtService,
       ],
     }).compile();
@@ -30,5 +29,16 @@ describe("AuthService", () => {
 
   it("should be defined", () => {
     expect(service).toBeDefined();
+  });
+  describe("register", () => {
+    it("shouldn't accept password longer than 72 characters", async () => {
+      const registerUserDto = {
+        email: "test@test.com",
+        password: "a".repeat(73),
+        firstName: "Test",
+        lastName: "User",
+      };
+      await expect(service.register(registerUserDto)).rejects.toThrow(BadRequestException);
+    });
   });
 });
