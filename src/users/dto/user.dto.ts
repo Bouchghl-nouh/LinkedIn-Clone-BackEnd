@@ -4,11 +4,10 @@ import {
   IsOptional,
   IsString,
   IsStrongPassword,
-  MaxLength,
   IsBoolean,
   Length,
 } from "class-validator";
-import { OmitType,PartialType } from "@nestjs/swagger";
+import { OmitType, PartialType } from "@nestjs/swagger";
 class UserDto {
   @IsString()
   @IsNotEmpty()
