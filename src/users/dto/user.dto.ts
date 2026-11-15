@@ -24,7 +24,6 @@ class UserDto {
   @IsNotEmpty()
   email!: string;
 
-  @MaxLength(72)
   @IsStrongPassword(
     {
       minLength: 12,

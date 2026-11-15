@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { Injectable, UnauthorizedException,BadRequestException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import bcrypt from "bcrypt";
@@ -24,7 +24,11 @@ export class AuthService {
     });
   }
   async register(registerUserDto: RegisterUserDto): Promise<string> {
-    const hashedPassword = await bcrypt.hash(registerUserDto.password, 10);
+    const {password} = registerUserDto;
+    if(Buffer.byteLength(password, 'utf-8') > 72) {
+      throw new BadRequestException("Password is too long");
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const userWithHashedPassword = Object.assign(new RegisterUserDto(), registerUserDto, {
       password: hashedPassword,
