@@ -1,11 +1,11 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
-import { CreateUserDto } from "../users/dto/create-user.dto.js";
-import bcrypt from "bcrypt";
-import { UsersService } from "../users/users.service.js";
-import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
-import { User } from "../users/entities/user.entity.js";
+import { JwtService } from "@nestjs/jwt";
+import bcrypt from "bcrypt";
 import { StringValue } from "ms";
+import { RegisterUserDto } from "../users/dto/user.dto.js";
+import { User } from "../users/entities/user.entity.js";
+import { UsersService } from "../users/users.service.js";
 import { EmailService } from "./email/email.service.js";
 @Injectable()
 export class AuthService {
@@ -23,10 +23,10 @@ export class AuthService {
       secret: this.configService.get<string>("EMAIL_VERIFICATION_SECRET"),
     });
   }
-  async register(createUserDto: CreateUserDto): Promise<string> {
-    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+  async register(registerUserDto: RegisterUserDto): Promise<string> {
+    const hashedPassword = await bcrypt.hash(registerUserDto.password, 10);
 
-    const userWithHashedPassword = Object.assign(new CreateUserDto(), createUserDto, {
+    const userWithHashedPassword = Object.assign(new RegisterUserDto(), registerUserDto, {
       password: hashedPassword,
     });
     const user = await this.usersService.create(userWithHashedPassword);
