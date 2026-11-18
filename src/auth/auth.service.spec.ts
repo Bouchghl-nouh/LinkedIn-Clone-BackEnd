@@ -4,7 +4,7 @@ import { UsersService } from "../users/users.service.js";
 import { EmailService } from "./email/email.service.js";
 import { BadRequestException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import {ConfigService} from "@nestjs/config";
+import { ConfigService } from "@nestjs/config";
 describe("AuthService", () => {
   let service: AuthService;
   const mockUsersService = {
@@ -19,7 +19,7 @@ describe("AuthService", () => {
         AuthService,
         { provide: UsersService, useValue: mockUsersService },
         { provide: EmailService, useValue: mockEmailService },
-        {provide:ConfigService, useValue: {get: vi.fn()}},
+        { provide: ConfigService, useValue: { get: vi.fn() } },
         JwtService,
       ],
     }).compile();

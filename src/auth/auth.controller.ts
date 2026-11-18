@@ -1,13 +1,48 @@
-import { Body, Controller, Get, HttpStatus, Post, Query, HttpCode } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Post,
+  Query,
+  HttpCode,
+  UseGuards,
+  Res,
+  Req,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { ApiBody } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
-import { RegisterUserDto } from "../users/dto/user.dto.js";
+import { RegisterUserDto, LoginUserDto } from "../users/dto/user.dto.js";
 import { AuthService } from "./auth.service.js";
 import { EmailDto } from "./dto/email.dto.js";
-import { ApiResponseWrapper } from "../common/decorators/api-reponse.decorator.js";
+import { ApiResponseWrapper } from "../common/decorators/api-response.decorator.js";
+import { ConfigService } from "@nestjs/config";
+import ms, { StringValue } from "ms";
+import type { Response } from "express";
+import { LocalAuthGuard } from "./guards/local-auth.guard.js";
+import { JwtAuthGuard } from "./guards/jwt.auth.guard.js";
+import { AccessTokenResponseDto } from "./dto/access_token-response.dto.js";
+import { CurrentUser } from "../common/decorators/current-user.decorator.js";
+import { User } from "../users/entities/user.entity.js";
+import type { RequestWithCookies } from "../common/types/cookies-request.type.js";
 @Throttle({ default: { limit: 5, ttl: 60000 } })
 @Controller("auth")
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
+  private setRefreshTokenCookie(res: Response, refreshToken: string) {
+    const expiresIn = this.configService.getOrThrow<StringValue>("REFRESH_TOKEN_EXPIRES_IN");
+    res.cookie("refresh_token", refreshToken, {
+      httpOnly: true,
+      secure: this.configService.get<string>("NODE_ENV") === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: ms(expiresIn),
+    });
+  }
   @Post("register")
   @ApiResponseWrapper({ status: HttpStatus.CREATED })
   async register(@Body() registerUser: RegisterUserDto): Promise<{ message: string }> {
@@ -26,5 +61,57 @@ export class AuthController {
   async resendVerificationEmail(@Body() resendDto: EmailDto) {
     const verificationMessage = await this.authService.resendVerificationEmail(resendDto.email);
     return { message: verificationMessage };
+  }
+  @Post("login")
+  @ApiResponseWrapper({ dataDto: AccessTokenResponseDto })
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(LocalAuthGuard)
+  @ApiBody({ type: LoginUserDto })
+  async login(@CurrentUser() user: User, @Res({ passthrough: true }) res: Response) {
+    const { access_token, refresh_token } = await this.authService.login(user);
+    this.setRefreshTokenCookie(res, refresh_token);
+    return {
+      message: "Login successful",
+      data: {
+        access_token,
+      },
+    };
+  }
+  @Post("refresh")
+  @ApiResponseWrapper({ dataDto: AccessTokenResponseDto })
+  @HttpCode(HttpStatus.OK)
+  async refresh(@Req() req: RequestWithCookies, @Res({ passthrough: true }) res: Response) {
+    const oldRefreshToken = req.cookies["refresh_token"];
+    if (!oldRefreshToken) {
+      throw new UnauthorizedException("No refresh token provided");
+    }
+    const { access_token, refresh_token } = await this.authService.refresh(oldRefreshToken);
+    this.setRefreshTokenCookie(res, refresh_token);
+    return {
+      message: "Token refreshed successfully",
+      data: {
+        access_token,
+      },
+    };
+  }
+  @Post("logout")
+  @ApiResponseWrapper()
+  @HttpCode(HttpStatus.OK)
+  async logout(@Req() req: RequestWithCookies, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = req.cookies["refresh_token"];
+    if (refreshToken) {
+      await this.authService.logout(refreshToken);
+    }
+    res.clearCookie("refresh_token", { path: "/" });
+    return { message: "Logout successful" };
+  }
+  @Post("logout-all")
+  @ApiResponseWrapper()
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async logoutAll(@CurrentUser("id") userId: number, @Res({ passthrough: true }) res: Response) {
+    await this.authService.logoutAll(userId);
+    res.clearCookie("refresh_token", { path: "/" });
+    return { message: "All sessions logged out successfully" };
   }
 }
