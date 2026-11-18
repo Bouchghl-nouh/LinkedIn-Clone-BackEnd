@@ -99,13 +99,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async logout(@Req() req: RequestWithCookies, @Res({ passthrough: true }) res: Response) {
     const refreshToken = req.cookies["refresh_token"];
-    try {
-      if (typeof refreshToken === "string" && refreshToken.length > 0) {
-        await this.authService.logout(refreshToken);
-      }
-    } finally {
-      res.clearCookie("refresh_token", { path: "/" });
+    if (typeof refreshToken === "string" && refreshToken.length > 0) {
+      await this.authService.logout(refreshToken);
     }
+    res.clearCookie("refresh_token", { path: "/" });
+
     return { message: "Logout successful" };
   }
   @Post("logout-all")
@@ -113,11 +111,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   async logoutAll(@CurrentUser("id") userId: number, @Res({ passthrough: true }) res: Response) {
-    try {
-      await this.authService.logoutAll(userId);
-    } finally {
-      res.clearCookie("refresh_token", { path: "/" });
-    }
+    await this.authService.logoutAll(userId);
+    res.clearCookie("refresh_token", { path: "/" });
     return { message: "All sessions logged out successfully" };
   }
 }
