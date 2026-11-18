@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException,BadRequestException } from "@nestjs/common";
+import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import bcrypt from "bcrypt";
@@ -7,6 +7,7 @@ import { RegisterUserDto } from "../users/dto/user.dto.js";
 import { User } from "../users/entities/user.entity.js";
 import { UsersService } from "../users/users.service.js";
 import { EmailService } from "./email/email.service.js";
+import { RefreshTokensService } from "./refresh-tokens/refresh-tokens.service.js";
 @Injectable()
 export class AuthService {
   constructor(
@@ -14,6 +15,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
+    private readonly refreshTokensService: RefreshTokensService,
   ) {}
   generateEmailVerificationToken(user: User): string {
     const payload = { type: "email_verification", sub: user.id };
@@ -24,8 +26,8 @@ export class AuthService {
     });
   }
   async register(registerUserDto: RegisterUserDto): Promise<string> {
-    const {password} = registerUserDto;
-    if(Buffer.byteLength(password, 'utf-8') > 72) {
+    const { password } = registerUserDto;
+    if (Buffer.byteLength(password, "utf-8") > 72) {
       throw new BadRequestException("Password is too long");
     }
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -69,5 +71,42 @@ export class AuthService {
     const verificationToken = this.generateEmailVerificationToken(user);
     await this.emailService.sendVerificationEmail(user.email, verificationToken);
     return verificationText;
+  }
+  async validateUser(email: string, password: string): Promise<User | null> {
+    const user = await this.usersService.findOne({ email: email });
+    if (!user) {
+      return null;
+    }
+    if (Buffer.byteLength(password, "utf-8") > 72) {
+      return null;
+    }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return null;
+    }
+    return user;
+  }
+  async login(user: User): Promise<{ access_token: string; refresh_token: string }> {
+    const payload = { sub: user.id };
+    const access_token = this.jwtService.sign(payload);
+    const refresh_token = await this.refreshTokensService.create(user.id);
+    return {
+      access_token,
+      refresh_token,
+    };
+  }
+  async refresh(oldRefreshToken: string): Promise<{ access_token: string; refresh_token: string }> {
+    const { refreshToken, userId } = await this.refreshTokensService.refresh(oldRefreshToken);
+    const access_token = this.jwtService.sign({ sub: userId });
+    return {
+      access_token,
+      refresh_token: refreshToken,
+    };
+  }
+  logout(refreshToken: string) {
+    return this.refreshTokensService.delete(refreshToken);
+  }
+  logoutAll(userId: number) {
+    return this.refreshTokensService.deleteAllForUser(userId);
   }
 }

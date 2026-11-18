@@ -4,7 +4,8 @@ import { UsersService } from "../users/users.service.js";
 import { EmailService } from "./email/email.service.js";
 import { BadRequestException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import {ConfigService} from "@nestjs/config";
+import { ConfigService } from "@nestjs/config";
+import { RefreshTokensService } from "./refresh-tokens/refresh-tokens.service.js";
 describe("AuthService", () => {
   let service: AuthService;
   const mockUsersService = {
@@ -13,13 +14,15 @@ describe("AuthService", () => {
   const mockEmailService = {
     sendVerificationEmail: vi.fn(),
   };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: UsersService, useValue: mockUsersService },
         { provide: EmailService, useValue: mockEmailService },
-        {provide:ConfigService, useValue: {get: vi.fn()}},
+        { provide: ConfigService, useValue: { get: vi.fn() } },
+        { provide: RefreshTokensService, useValue: { createRefreshToken: vi.fn() } },
         JwtService,
       ],
     }).compile();
