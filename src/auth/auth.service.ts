@@ -77,6 +77,9 @@ export class AuthService {
     if (!user) {
       return null;
     }
+    if (Buffer.byteLength(password, "utf-8") > 72) {
+      return null;
+    }
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return null;
@@ -85,17 +88,18 @@ export class AuthService {
   }
   async login(user: User): Promise<{ access_token: string; refresh_token: string }> {
     const payload = { sub: user.id };
-    const refreshToken = await this.refreshTokensService.create(user.id);
+    const access_token = this.jwtService.sign(payload);
+    const refresh_token = await this.refreshTokensService.create(user.id);
     return {
-      access_token: this.jwtService.sign(payload),
-      refresh_token: refreshToken,
+      access_token,
+      refresh_token,
     };
   }
   async refresh(oldRefreshToken: string): Promise<{ access_token: string; refresh_token: string }> {
     const { refreshToken, userId } = await this.refreshTokensService.refresh(oldRefreshToken);
-    const payload = { sub: userId };
+    const access_token = this.jwtService.sign({ sub: userId });
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token,
       refresh_token: refreshToken,
     };
   }

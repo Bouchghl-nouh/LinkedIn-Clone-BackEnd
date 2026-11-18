@@ -22,7 +22,7 @@ export class RefreshTokensService {
     expiresAt: Date;
   } {
     const { rawToken, tokenHash } = this.tokenService.generate();
-    const expiresIn = this.configService.getOrThrow<StringValue>("REFRESH_TOKEN_EXPIRES_IN", "7d");
+    const expiresIn = this.configService.getOrThrow<StringValue>("REFRESH_TOKEN_EXPIRES_IN");
     const expiresAt = new Date(Date.now() + ms(expiresIn));
     return { rawToken, tokenHash, expiresAt };
   }
@@ -45,11 +45,7 @@ export class RefreshTokensService {
         where: { tokenHash: hashedRefreshToken },
         lock: { mode: "pessimistic_write" },
       });
-      if (!existingToken) {
-        throw new UnauthorizedException("Invalid refresh token");
-      }
-      if (existingToken.expiresAt < new Date()) {
-        await manager.delete(RefreshToken, { id: existingToken.id });
+      if (!existingToken || existingToken.expiresAt < new Date()) {
         throw new UnauthorizedException("Invalid refresh token");
       }
       await manager.delete(RefreshToken, { id: existingToken.id });
