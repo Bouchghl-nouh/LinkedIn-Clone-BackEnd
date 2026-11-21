@@ -27,7 +27,7 @@
     "migration:revert": "npm run typeorm -- migration:revert",
     "migration:show": "npm run typeorm -- migration:show",
     "schema:log": "npm run typeorm -- schema:log",
-    "test": "vitest run --exclude '**/*.integration.spec.ts'",
+    "test": "vitest run",
     "test:integration": "NODE_ENV=test vitest run --config vitest.config.integration.ts --no-file-parallelism",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
