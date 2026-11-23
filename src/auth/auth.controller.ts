@@ -23,6 +23,7 @@ import { LoginUserDto, RegisterUserDto } from "../users/dto/user.dto.js";
 import { User } from "../users/entities/user.entity.js";
 import { AuthService } from "./auth.service.js";
 import { AccessTokenResponseDto } from "./dto/access_token-response.dto.js";
+import { ResetPasswordDto } from "./dto/reset_password.dto.js";
 import { EmailDto } from "./dto/email.dto.js";
 import { JwtAuthGuard } from "./guards/jwt.auth.guard.js";
 import { LocalAuthGuard } from "./guards/local-auth.guard.js";
@@ -114,5 +115,20 @@ export class AuthController {
     await this.authService.logoutAll(userId);
     res.clearCookie("refresh_token", { path: "/" });
     return { message: "All sessions logged out successfully" };
+  }
+  @Post("forget-password")
+  @ApiResponseWrapper()
+  @HttpCode(HttpStatus.OK)
+  async forgetPassword(@Body() resendDto: EmailDto) {
+    const verificationText = await this.authService.forgetPassword(resendDto.email);
+    return { message: verificationText };
+  }
+
+  @Post("reset-password")
+  @ApiResponseWrapper()
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Query("token") token: string, @Body() resetPasswordDto: ResetPasswordDto) {
+    await this.authService.resetPassword(token, resetPasswordDto.newPassword);
+    return { message: "Password reset successfully" };
   }
 }

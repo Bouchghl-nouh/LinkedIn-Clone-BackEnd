@@ -8,6 +8,8 @@ import { User } from "../users/entities/user.entity.js";
 import { UsersService } from "../users/users.service.js";
 import { EmailService } from "./email/email.service.js";
 import { RefreshTokensService } from "./refresh-tokens/refresh-tokens.service.js";
+import { PasswordTokensService } from "./password-tokens/password-tokens.service.js";
+import { DataSource } from "typeorm";
 @Injectable()
 export class AuthService {
   constructor(
@@ -16,12 +18,13 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
     private readonly refreshTokensService: RefreshTokensService,
+    private readonly passwordTokensService: PasswordTokensService,
+    private readonly dataSource: DataSource,
   ) {}
   generateEmailVerificationToken(user: User): string {
     const payload = { type: "email_verification", sub: user.id };
     return this.jwtService.sign(payload, {
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      expiresIn: this.configService.get<string>("EMAIL_VERIFICATION_EXPIRES_IN") as StringValue,
+      expiresIn: this.configService.getOrThrow<StringValue>("EMAIL_VERIFICATION_EXPIRES_IN"),
       secret: this.configService.get<string>("EMAIL_VERIFICATION_SECRET"),
     });
   }
@@ -108,5 +111,31 @@ export class AuthService {
   }
   logoutAll(userId: number) {
     return this.refreshTokensService.deleteAllForUser(userId);
+  }
+  async forgetPassword(email: string) {
+    const user = await this.usersService.findOne({ email });
+    const verificationText = "If the account exists, a password reset email has been sent.";
+    if (!user) {
+      return verificationText;
+    }
+    const passwordToken = await this.passwordTokensService.create(user.id);
+    await this.emailService.sendPasswordResetEmail(user.email, passwordToken);
+    return verificationText;
+  }
+  async resetPassword(token: string, newPassword: string) {
+    if (Buffer.byteLength(newPassword, "utf-8") > 72) {
+      throw new BadRequestException("Password is too long");
+    }
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.dataSource.transaction(async (manager) => {
+      const passwordToken = await this.passwordTokensService.validate(token, manager);
+      if (passwordToken === null) {
+        throw new UnauthorizedException("Invalid or expired password reset token");
+      }
+      await this.usersService.update(passwordToken.userId, { password: passwordHash }, manager);
+      await this.passwordTokensService.delete(passwordToken.id, manager);
+      await this.refreshTokensService.deleteAllForUser(passwordToken.userId, manager);
+    });
+    return "Password reset successfully";
   }
 }

@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { MailtrapClient } from "mailtrap";
 import { ConfigService } from "@nestjs/config";
 import { emailVerification } from "./templates/email-verification.template.js";
+import { resetPasswordEmailTemplate } from "./templates/reset-password.template.js";
 @Injectable()
 export class EmailService {
   private readonly mailerService: MailtrapClient;
@@ -30,6 +31,9 @@ export class EmailService {
     });
   }
   async sendPasswordResetEmail(email: string, token: string): Promise<void> {
+    const baseUrl = this.configService.get<string>("APP_URL");
+    // this link should be changed later to the frontend link for resetting password
+    const verificationUrl = `${baseUrl}/auth/reset-password?token=${token}`;
     await this.mailerService.send({
       from: {
         email: this.configService.get<string>("MAILTRAP_USER_EMAIL") ?? "hello@rpaintel.com",
@@ -41,7 +45,7 @@ export class EmailService {
         },
       ],
       subject: "Password Reset",
-      text: `Reset your password: http://localhost:3000/auth/reset-password?token=${token}`,
+      html: resetPasswordEmailTemplate(verificationUrl),
     });
   }
 }

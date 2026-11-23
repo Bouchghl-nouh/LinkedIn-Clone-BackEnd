@@ -46,7 +46,7 @@ class UserDto {
 }
 
 export class RegisterUserDto extends OmitType(UserDto, ["avatarUrl", "isVerified"] as const) {}
-export class UpdateUserDto extends PartialType(OmitType(UserDto, ["email", "password"] as const)) {}
+export class UpdateUserDto extends PartialType(OmitType(UserDto, ["email"] as const)) {}
 export class LoginUserDto extends OmitType(UserDto, [
   "firstName",
   "lastName",
