@@ -6,6 +6,8 @@ import { BadRequestException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import { RefreshTokensService } from "./refresh-tokens/refresh-tokens.service.js";
+import { PasswordTokensService } from "./password-tokens/password-tokens.service.js";
+import { DataSource } from "typeorm";
 describe("AuthService", () => {
   let service: AuthService;
   const mockUsersService = {
@@ -22,7 +24,9 @@ describe("AuthService", () => {
         { provide: UsersService, useValue: mockUsersService },
         { provide: EmailService, useValue: mockEmailService },
         { provide: ConfigService, useValue: { get: vi.fn() } },
-        { provide: RefreshTokensService, useValue: { createRefreshToken: vi.fn() } },
+        { provide: RefreshTokensService, useValue: { create: vi.fn() } },
+        { provide: PasswordTokensService, useValue: { create: vi.fn() } },
+        { provide: DataSource, useValue: { createQueryRunner: vi.fn() } },
         JwtService,
       ],
     }).compile();

@@ -11,6 +11,8 @@ import { AuthService } from "./auth.service.js";
 import { EmailService } from "./email/email.service.js";
 import { RefreshToken } from "./refresh-tokens/entities/refresh-token.entity.js";
 import { RefreshTokensService } from "./refresh-tokens/refresh-tokens.service.js";
+import { PasswordToken } from "./password-tokens/entities/password-token.entity.js";
+import { PasswordTokensService } from "./password-tokens/password-tokens.service.js";
 
 const uniqueEmail = (label: string) =>
   `${label}-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`;
@@ -21,11 +23,13 @@ describe("auth service (integration)", () => {
   let authService: AuthService;
   let usersService: UsersService;
   let refreshTokensService: RefreshTokensService;
+  let passwordTokensService: PasswordTokensService;
   let jwtService: JwtService;
   let configService: ConfigService;
 
   const emailService = {
     sendVerificationEmail: vi.fn(),
+    sendPasswordResetEmail: vi.fn(),
   };
 
   const resetDatabase = async () => {
@@ -44,6 +48,7 @@ describe("auth service (integration)", () => {
     authService = module.get(AuthService);
     usersService = module.get(UsersService);
     refreshTokensService = module.get(RefreshTokensService);
+    passwordTokensService = module.get(PasswordTokensService);
     jwtService = module.get(JwtService);
     configService = module.get(ConfigService);
   });
@@ -218,6 +223,113 @@ describe("auth service (integration)", () => {
     await expect(authService.resendVerificationEmail(uniqueEmail("missing"))).resolves.toContain(
       "If the account exists",
     );
+  });
+
+  it("forgets an existing password without revealing whether an account exists", async () => {
+    const email = uniqueEmail("forget");
+    await usersService.create({
+      email,
+      password: await bcrypt.hash("Password123!", 10),
+      firstName: "Auth",
+      lastName: "User",
+    });
+
+    await expect(authService.forgetPassword(email)).resolves.toBe(
+      "If the account exists, a password reset email has been sent.",
+    );
+    expect(emailService.sendPasswordResetEmail).toHaveBeenCalledOnce();
+    expect(emailService.sendPasswordResetEmail).toHaveBeenCalledWith(
+      email,
+      expect.stringMatching(/^[a-f0-9]{128}$/),
+    );
+
+    vi.clearAllMocks();
+    await expect(authService.forgetPassword(uniqueEmail("missing"))).resolves.toBe(
+      "If the account exists, a password reset email has been sent.",
+    );
+    expect(emailService.sendPasswordResetEmail).not.toHaveBeenCalled();
+  });
+
+  it("rejects weak and overly long replacement passwords", async () => {
+    await expect(authService.resetPassword("unknown-token", "é".repeat(37))).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it("rejects expired password reset tokens", async () => {
+    const user = await usersService.create({
+      email: uniqueEmail("expired-reset"),
+      password: await bcrypt.hash("Password123!", 10),
+      firstName: "Auth",
+      lastName: "User",
+    });
+    const token = await passwordTokensService.create(user.id);
+    const passwordToken = await dataSource
+      .getRepository(PasswordToken)
+      .findOneOrFail({ where: { userId: user.id } });
+    passwordToken.expiresAt = new Date(Date.now() - 60_000);
+    await dataSource.getRepository(PasswordToken).save(passwordToken);
+
+    await expect(authService.resetPassword(token, "NewPassword123!")).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it("rejects password reset tokens that do not exist", async () => {
+    await expect(
+      authService.resetPassword("not-a-real-token", "NewPassword123!"),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it("resets a password and invalidates the reset token and all refresh sessions", async () => {
+    const user = await usersService.create({
+      email: uniqueEmail("successful-reset"),
+      password: await bcrypt.hash("Password123!", 10),
+      firstName: "Auth",
+      lastName: "User",
+    });
+    const resetToken = await passwordTokensService.create(user.id);
+    await refreshTokensService.create(user.id);
+    await refreshTokensService.create(user.id);
+
+    await expect(authService.resetPassword(resetToken, "NewPassword123!")).resolves.toBe(
+      "Password reset successfully",
+    );
+
+    const updatedUser = await usersService.findOne({ id: user.id });
+    expect(updatedUser).not.toBeNull();
+    expect(await bcrypt.compare("NewPassword123!", updatedUser!.password)).toBe(true);
+    await expect(
+      dataSource.getRepository(PasswordToken).count({ where: { userId: user.id } }),
+    ).resolves.toBe(0);
+    await expect(
+      dataSource.getRepository(RefreshToken).count({ where: { userId: user.id } }),
+    ).resolves.toBe(0);
+  });
+
+  it("allows only one concurrent password reset for the same token", async () => {
+    const user = await usersService.create({
+      email: uniqueEmail("concurrent-reset"),
+      password: await bcrypt.hash("Password123!", 10),
+      firstName: "Auth",
+      lastName: "User",
+    });
+    const resetToken = await passwordTokensService.create(user.id);
+    await refreshTokensService.create(user.id);
+
+    const results = await Promise.allSettled([
+      authService.resetPassword(resetToken, "FirstPassword123!"),
+      authService.resetPassword(resetToken, "SecondPassword123!"),
+    ]);
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+    await expect(
+      dataSource.getRepository(PasswordToken).count({ where: { userId: user.id } }),
+    ).resolves.toBe(0);
+    await expect(
+      dataSource.getRepository(RefreshToken).count({ where: { userId: user.id } }),
+    ).resolves.toBe(0);
   });
 
   it("refreshes access and refresh tokens", async () => {
