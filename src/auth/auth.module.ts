@@ -8,7 +8,9 @@ import { JwtModule } from "@nestjs/jwt";
 import { StringValue } from "ms";
 import { EmailService } from "./email/email.service.js";
 import { RefreshTokensService } from "./refresh-tokens/refresh-tokens.service.js";
+import { PasswordTokensService } from "./password-tokens/password-tokens.service.js";
 import { RefreshToken } from "./refresh-tokens/entities/refresh-token.entity.js";
+import { PasswordToken } from "./password-tokens/entities/password-token.entity.js";
 import { TokenModule } from "../common/token/token.module.js";
 import { LocalStrategy } from "./strategies/local.strategy.js";
 import { JwtStrategy } from "./strategies/jwt.strategy.js";
@@ -25,10 +27,17 @@ import { JwtStrategy } from "./strategies/jwt.strategy.js";
         },
       }),
     }),
-    TypeOrmModule.forFeature([RefreshToken]),
+    TypeOrmModule.forFeature([RefreshToken, PasswordToken]),
     TokenModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, EmailService, RefreshTokensService, LocalStrategy, JwtStrategy],
+  providers: [
+    AuthService,
+    EmailService,
+    RefreshTokensService,
+    PasswordTokensService,
+    LocalStrategy,
+    JwtStrategy,
+  ],
 })
 export class AuthModule {}

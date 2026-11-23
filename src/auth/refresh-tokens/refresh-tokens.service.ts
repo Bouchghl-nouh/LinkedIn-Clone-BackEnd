@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import ms, { StringValue } from "ms";
 import { TokenService } from "../../common/token/token.service.js";
-import { DataSource, Repository } from "typeorm";
+import { DataSource, Repository, EntityManager } from "typeorm";
 import { RefreshToken } from "./entities/refresh-token.entity.js";
 
 @Injectable()
@@ -21,10 +21,8 @@ export class RefreshTokensService {
     tokenHash: string;
     expiresAt: Date;
   } {
-    const { rawToken, tokenHash } = this.tokenService.generate();
     const expiresIn = this.configService.getOrThrow<StringValue>("REFRESH_TOKEN_EXPIRES_IN");
-    const expiresAt = new Date(Date.now() + ms(expiresIn));
-    return { rawToken, tokenHash, expiresAt };
+    return this.tokenService.generateWithExpiration(ms(expiresIn));
   }
 
   async create(userId: number): Promise<string> {
@@ -65,7 +63,8 @@ export class RefreshTokensService {
     return this.refreshTokenRepository.delete({ tokenHash });
   }
 
-  deleteAllForUser(userId: number) {
-    return this.refreshTokenRepository.delete({ userId });
+  deleteAllForUser(userId: number, manager?: EntityManager) {
+    const repository = manager ? manager.getRepository(RefreshToken) : this.refreshTokenRepository;
+    return repository.delete({ userId });
   }
 }
